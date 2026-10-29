@@ -1,13 +1,13 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Actas de partido | Fundació Terrassa FC 1906",
-  description: "Consulta las actas de los partidos finalizados de fútbol sala de la Fundació Terrassa FC 1906.",
+  title: "Actes de partit / Actas de partido | Fundació Terrassa FC 1906",
+  description: "Consulta les actes dels partits finalitzats de futbol sala de la Fundació Terrassa FC 1906. Consulta las actas de los partidos finalizados de fútbol sala de la Fundació Terrassa FC 1906.",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="es">
+    <html lang="ca">
       <body>{children}</body>
     </html>
   );

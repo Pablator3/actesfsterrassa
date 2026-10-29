@@ -2,6 +2,7 @@
 
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { setLanguage, tr, useLanguage } from "@/lib/language";
 
 const CREST_URL = "https://files.fcf.cat/escudos/clubes/escudos/";
 const CLUB_CREST = `${CREST_URL}00100_0000988633_TERRASSAFCnou.png`;
@@ -14,17 +15,10 @@ function currentSeason() {
 
 const CURRENT_SEASON = currentSeason();
 
-function displayDate(value, options = {}) {
+function displayDate(value, options = {}, language = "es") {
   const [year, month, day] = String(value || "").slice(0, 10).split("-").map(Number);
-  if (!year || !month || !day) return "Fecha pendiente";
-  return new Intl.DateTimeFormat("es-ES", options).format(new Date(year, month - 1, day));
-}
-
-function seasonFor(date) {
-  const [year, month] = String(date || "").slice(0, 7).split("-").map(Number);
-  if (!year || !month) return "Temporada desconocida";
-  const start = month >= 7 ? year : year - 1;
-  return `${start}/${String(start + 1).slice(-2)}`;
+  if (!year || !month || !day) return tr(language, "Data pendent", "Fecha pendiente");
+  return new Intl.DateTimeFormat(language === "ca" ? "ca-ES" : "es-ES", options).format(new Date(year, month - 1, day));
 }
 
 function asList(value) {
@@ -45,7 +39,7 @@ function crestUrl(file) {
   return file ? `${CREST_URL}${encodeURIComponent(file)}` : "";
 }
 
-function SideRoster({ title, players }) {
+function SideRoster({ title, players, language }) {
   const roster = asList(players);
   if (!roster.length) return null;
 
@@ -58,7 +52,7 @@ function SideRoster({ title, players }) {
             <span className="player-number">{player.dorsal || "–"}</span>
             <span>{player.nombre || "Jugador"}</span>
             {player.titular === "1" && <small>Titular</small>}
-            {(player.portero === 1 || player.portero === "1" || player.portero === true) && <small className="goalkeeper-badge">Portero</small>}
+            {(player.portero === 1 || player.portero === "1" || player.portero === true) && <small className="goalkeeper-badge">{tr(language, "Porter", "Portero")}</small>}
           </li>
         ))}
       </ol>
@@ -66,10 +60,10 @@ function SideRoster({ title, players }) {
   );
 }
 
-function SanctionsSection({ previas }) {
+function SanctionsSection({ previas, language }) {
   return (
     <section className="acta-section">
-      <h3>Sanciones previas <span>{previas.length}</span></h3>
+      <h3>{tr(language, "Sancions prèvies", "Sanciones previas")} <span>{previas.length}</span></h3>
       {previas.length ? (
         <ul className="event-list">
           {previas.map((sanction, index) => (
@@ -78,24 +72,29 @@ function SanctionsSection({ previas }) {
               <span>
                 {sanction.participante_nombre || "Jugador"}
                 <small>{(sanction.nombre_equipo || "").trim()}</small>
-                <small>Sancionado en la jornada {sanction.jornada}{sanction.articulo_salida ? ` · Art. ${sanction.articulo_salida}` : ""}</small>
+                <small>{tr(language, "Sancionat a la jornada", "Sancionado en la jornada")} {sanction.jornada}{sanction.articulo_salida ? ` · Art. ${sanction.articulo_salida}` : ""}</small>
               </span>
-              <div className="sanction-counts" aria-label={`${sanction.total} partidos de sanción, ${sanction.cumplidos} cumplidos, ${sanction.pendientes} restantes`}>
-                <span><b>{sanction.total}</b><small>Sanción</small></span>
-                <span><b>{sanction.cumplidos}</b><small>Cumplidos</small></span>
-                <span className="is-remaining"><b>{sanction.pendientes}</b><small>Restantes</small></span>
+              <div className="sanction-counts" aria-label={tr(language, `${sanction.total} partits de sanció, ${sanction.cumplidos} complerts, ${sanction.pendientes} pendents`, `${sanction.total} partidos de sanción, ${sanction.cumplidos} cumplidos, ${sanction.pendientes} restantes`)}>
+                <span><b>{sanction.total}</b><small>{tr(language, "Sanció", "Sanción")}</small></span>
+                <span><b>{sanction.cumplidos}</b><small>{tr(language, "Complerts", "Cumplidos")}</small></span>
+                <span className="is-remaining"><b>{sanction.pendientes}</b><small>{tr(language, "Pendents", "Restantes")}</small></span>
               </div>
             </li>
           ))}
         </ul>
-      ) : <p className="empty-note">Ningún jugador sancionado por partidos anteriores.</p>}
+      ) : <p className="empty-note">{tr(language, "Cap jugador sancionat per partits anteriors.", "Ningún jugador sancionado por partidos anteriores.")}</p>}
     </section>
   );
 }
 
-function ActaDetails({ acta, sanciones = [], previas = [] }) {
+function displayOfficialRole(role, language) {
+  if (language === "ca") return role;
+  return String(role || "").replace(/^Assistent/, "Asistente");
+}
+
+function ActaDetails({ acta, sanciones = [], previas = [], language }) {
   const home = acta.equipo_local?.NOMBRE_EQUIPO || "Local";
-  const away = acta.equipo_visitante?.NOMBRE_EQUIPO || "Visitante";
+  const away = acta.equipo_visitante?.NOMBRE_EQUIPO || tr(language, "Visitant", "Visitante");
   const homeRoster = new Map(asList(acta.jugadores_equipo_local).map((player) => [String(player.id), player]));
   const awayRoster = new Map(asList(acta.jugadores_equipo_visitante).map((player) => [String(player.id), player]));
   const mapEvents = (events, team, roster, crest) => asList(events).map((event) => {
@@ -144,13 +143,13 @@ function ActaDetails({ acta, sanciones = [], previas = [] }) {
   return (
     <div className="acta-details">
       <div className="acta-meta">
-        <span>{acta.nombre_competicion || acta.nombre_grupo || "Competición FCF"}</span>
+        <span>{acta.nombre_competicion || acta.nombre_grupo || tr(language, "Competició FCF", "Competición FCF")}</span>
         <span>{acta.temporada_nombre || ""}{acta.JORNADA ? ` · Jornada ${acta.JORNADA}` : ""}</span>
-        <span>{acta.CAMPO || "Pabellón no informado"}</span>
+        <span>{acta.CAMPO || tr(language, "Pavelló no informat", "Pabellón no informado")}</span>
       </div>
       <div className="acta-columns">
         <section className="acta-section">
-          <h3>Goles <span>{goals.length}</span></h3>
+          <h3>{tr(language, "Gols", "Goles")} <span>{goals.length}</span></h3>
           {goals.length ? (
             <ul className="event-list">
               {goals.map((event, index) => (
@@ -162,14 +161,14 @@ function ActaDetails({ acta, sanciones = [], previas = [] }) {
                 </li>
               ))}
             </ul>
-          ) : <p className="empty-note">Sin goles detallados.</p>}
+          ) : <p className="empty-note">{tr(language, "Sense gols detallats.", "Sin goles detallados.")}</p>}
         </section>
         <section className="acta-section">
-          <h3>Tarjetas <span>{cards.length}</span></h3>
-          <div className="card-counts" aria-label={`${yellowCardCount} amarillas, ${redCardCount} expulsiones`}>
-            <span className="yellow-count">{yellowCardCount} amarillas</span>
+          <h3>{tr(language, "Targetes", "Tarjetas")} <span>{cards.length}</span></h3>
+          <div className="card-counts" aria-label={tr(language, `${yellowCardCount} grogues, ${redCardCount} expulsions`, `${yellowCardCount} amarillas, ${redCardCount} expulsiones`)}>
+            <span className="yellow-count">{yellowCardCount} {tr(language, "grogues", "amarillas")}</span>
             <span className="count-divider" aria-hidden="true" />
-            <span className="red-count">{redCardCount} expulsiones</span>
+            <span className="red-count">{redCardCount} {tr(language, "expulsions", "expulsiones")}</span>
           </div>
           {cards.length ? (
             <ul className="event-list">
@@ -182,53 +181,53 @@ function ActaDetails({ acta, sanciones = [], previas = [] }) {
                     <small>{event.team}</small>
                     {(sanctionsByPlayer.get(String(event.id_jugador || "")) || []).map((sanction, sanctionIndex) => (
                       <small className="sanction-label" key={`${sanction.articulo_salida}-${sanctionIndex}`}>
-                        {sanction.matches} {sanction.matches === 1 ? "partido" : "partidos"} de sanción
+                        {sanction.matches} {sanction.matches === 1 ? tr(language, "partit", "partido") : tr(language, "partits", "partidos")} {tr(language, "de sanció", "de sanción")}
                         {sanction.articulo_salida ? ` · Art. ${sanction.articulo_salida}` : ""}
                       </small>
                     ))}
                   </span>
                   {isSecondYellow(event) ? (
-                    <span className="card-pair" role="img" aria-label="Expulsión por segunda tarjeta amarilla" title="Expulsión por segunda tarjeta amarilla">
+                    <span className="card-pair" role="img" aria-label={tr(language, "Expulsió per segona targeta groga", "Expulsión por segunda tarjeta amarilla")} title={tr(language, "Expulsió per segona targeta groga", "Expulsión por segunda tarjeta amarilla")}>
                       <span className="card-shape" aria-hidden="true" />
                       <span className="card-shape is-red" aria-hidden="true" />
                     </span>
                   ) : isRedCard(event) ? (
-                    <span className="card-shape is-red" role="img" aria-label="Tarjeta roja" title="Tarjeta roja" />
+                    <span className="card-shape is-red" role="img" aria-label={tr(language, "Targeta vermella", "Tarjeta roja")} title={tr(language, "Targeta vermella", "Tarjeta roja")} />
                   ) : (
-                    <span className="card-shape" role="img" aria-label="Tarjeta amarilla" title="Tarjeta amarilla" />
+                    <span className="card-shape" role="img" aria-label={tr(language, "Targeta groga", "Tarjeta amarilla")} title={tr(language, "Targeta groga", "Tarjeta amarilla")} />
                   )}
                 </li>
               ))}
             </ul>
-          ) : <p className="empty-note">Sin tarjetas registradas.</p>}
+          ) : <p className="empty-note">{tr(language, "Sense targetes registrades.", "Sin tarjetas registradas.")}</p>}
         </section>
         <div className="acta-stack">
-          <SanctionsSection previas={previas} />
+          <SanctionsSection previas={previas} language={language} />
           <section className="acta-section acta-section-compact">
-            <h3>Arbitraje <span>{officials.length}</span></h3>
+            <h3>{tr(language, "Arbitratge", "Arbitraje")} <span>{officials.length}</span></h3>
             {officials.length ? (
               <ul className="official-list">
                 {officials.map((official, index) => (
                   <li key={official.CODARBITRO || index}>
-                    <span>{official.nombre_arbitro}</span><small>{official.rol || "Árbitro"}</small>
+                    <span>{official.nombre_arbitro}</span><small>{displayOfficialRole(official.rol || tr(language, "Àrbitre", "Árbitro"), language)}</small>
                   </li>
                 ))}
               </ul>
-            ) : <p className="empty-note">Sin arbitraje publicado.</p>}
+            ) : <p className="empty-note">{tr(language, "Sense arbitratge publicat.", "Sin arbitraje publicado.")}</p>}
           </section>
         </div>
       </div>
       <div className="roster-grid">
-        <SideRoster title={`Plantilla local · ${home}`} players={acta.jugadores_equipo_local} />
-        <SideRoster title={`Plantilla visitante · ${away}`} players={acta.jugadores_equipo_visitante} />
+        <SideRoster title={`${tr(language, "Plantilla local", "Plantilla local")} · ${home}`} players={acta.jugadores_equipo_local} language={language} />
+        <SideRoster title={`${tr(language, "Plantilla visitant", "Plantilla visitante")} · ${away}`} players={acta.jugadores_equipo_visitante} language={language} />
       </div>
-      <p className="acta-source">Acta y sanciones consultadas en la Federació Catalana de Futbol.</p>
+      <p className="acta-source">{tr(language, "Acta i sancions consultades a la Federació Catalana de Futbol.", "Acta y sanciones consultadas en la Federació Catalana de Futbol.")}</p>
     </div>
   );
 }
 
 // Se monta con key={teamId}: al cambiar de equipo se reinicia y recarga sus próximos partidos.
-function PendingActas({ teamId, team }) {
+function PendingActas({ teamId, team, language }) {
   const [matches, setMatches] = useState([]);
   const [matchId, setMatchId] = useState("");
   const [loadingMatches, setLoadingMatches] = useState(Boolean(teamId));
@@ -242,11 +241,11 @@ function PendingActas({ teamId, team }) {
     fetch(`/api/pendents?equip=${encodeURIComponent(teamId)}`, { signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "No se pudieron cargar los próximos partidos.");
+        if (!response.ok) throw new Error("pending-matches");
         setMatches(payload.partits || []);
       })
       .catch((caught) => {
-        if (caught.name !== "AbortError") setError(caught.message || "No se pudieron cargar los próximos partidos.");
+        if (caught.name !== "AbortError") setError("pending-matches");
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoadingMatches(false);
@@ -262,10 +261,10 @@ function PendingActas({ teamId, team }) {
     try {
       const response = await fetch(`/api/acta?codacta=${encodeURIComponent(id)}`);
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "No se pudieron consultar las sanciones.");
+      if (!response.ok) throw new Error(tr(language, "No s'han pogut consultar les sancions.", "No se pudieron consultar las sanciones."));
       if (current === requestId.current) setDetail({ loading: false, error: "", previas: payload.sancionesPrevias || [] });
     } catch (caught) {
-      if (current === requestId.current) setDetail({ loading: false, error: caught.message || "No se pudieron consultar las sanciones.", previas: null });
+      if (current === requestId.current) setDetail({ loading: false, error: tr(language, "No s'han pogut consultar les sancions.", "No se pudieron consultar las sanciones."), previas: null });
     }
   }
 
@@ -275,12 +274,15 @@ function PendingActas({ teamId, team }) {
     <>
       <div className="pending-filters">
         <div className="filter-field">
-          <label htmlFor="pending-match">Próximo partido</label>
+          <label htmlFor="pending-match">{tr(language, "Proper partit", "Próximo partido")}</label>
           <select id="pending-match" value={matchId} disabled={!matches.length} onChange={(event) => selectMatch(event.target.value)}>
-            <option value="">{loadingMatches ? "Cargando partidos…" : matches.length ? `Elige uno de los ${matches.length} próximos partidos` : "No hay próximos partidos"}</option>
+            <option value="">{loadingMatches
+              ? tr(language, "Carregant partits…", "Cargando partidos…")
+              : matches.length ? tr(language, `Tria un dels ${matches.length} propers partits`, `Elige uno de los ${matches.length} próximos partidos`)
+                : tr(language, "No hi ha partits propers", "No hay próximos partidos")}</option>
             {matches.map((match) => (
               <option key={match.id} value={match.id}>
-                {match.jornada ? `J${match.jornada}` : "Amistoso"} · {displayDate(match.data, { day: "2-digit", month: "short" }).replace(".", "")} {match.hora} · {match.local} – {match.visitant}
+                {match.jornada ? `J${match.jornada}` : tr(language, "Amistós", "Amistoso")} · {displayDate(match.data, { day: "2-digit", month: "short" }, language).replace(".", "")} {match.hora} · {match.local} – {match.visitant}
               </option>
             ))}
           </select>
@@ -288,20 +290,20 @@ function PendingActas({ teamId, team }) {
       </div>
       <section className="results" aria-labelledby="pending-heading">
       <div className="results-heading">
-        <h2 id="pending-heading">Actas pendientes <span className="results-count">{matches.length}</span></h2>
-        <span>{team ? `${team.nom} · ${team.categoria}` : "Próximos partidos"}</span>
+        <h2 id="pending-heading">{tr(language, "Actes pendents", "Actas pendientes")} <span className="results-count">{matches.length}</span></h2>
+        <span>{team ? `${team.nom} · ${team.categoria}` : tr(language, "Propers partits", "Próximos partidos")}</span>
       </div>
-      {error && <p className="notice error-text" role="alert">{error}</p>}
+      {error && <p className="notice error-text" role="alert">{tr(language, "No s'han pogut carregar els propers partits.", "No se pudieron cargar los próximos partidos.")}</p>}
       {selectedMatch && (
         <article className="match-card pending-card">
           <div className="match-row pending-row">
             <div className="match-date">
-              <strong>{displayDate(selectedMatch.data, { day: "2-digit" })}</strong>
-              <span>{displayDate(selectedMatch.data, { month: "short" }).replace(".", "")}</span>
+              <strong>{displayDate(selectedMatch.data, { day: "2-digit" }, language)}</strong>
+              <span>{displayDate(selectedMatch.data, { month: "short" }, language).replace(".", "")}</span>
             </div>
             <div className="match-main">
               <div className="match-context">
-                <span>{selectedMatch.jornada ? `Jornada ${selectedMatch.jornada}` : "Partido amistoso"}</span>
+                <span>{selectedMatch.jornada ? `${tr(language, "Jornada", "Jornada")} ${selectedMatch.jornada}` : tr(language, "Partit amistós", "Partido amistoso")}</span>
                 <span>{selectedMatch.hora} h</span>
                 <span>{selectedMatch.competicio}</span>
               </div>
@@ -319,9 +321,9 @@ function PendingActas({ teamId, team }) {
             </div>
           </div>
           <div className="pending-detail" aria-live="polite">
-            {detail.loading && <p className="inline-status">Consultando sanciones…</p>}
+            {detail.loading && <p className="inline-status">{tr(language, "Consultant sancions…", "Consultando sanciones…")}</p>}
             {detail.error && <p className="inline-status error-text">{detail.error}</p>}
-            {detail.previas && <SanctionsSection previas={detail.previas} />}
+            {detail.previas && <SanctionsSection previas={detail.previas} language={language} />}
           </div>
         </article>
       )}
@@ -330,17 +332,17 @@ function PendingActas({ teamId, team }) {
   );
 }
 
-function MatchCard({ match, expanded, acta, onToggle }) {
+function MatchCard({ match, expanded, acta, onToggle, language }) {
   return (
     <article className={`match-card${expanded ? " is-expanded" : ""}`}>
       <div className="match-row">
         <div className="match-date">
-          <strong>{displayDate(match.data, { day: "2-digit" })}</strong>
-          <span>{displayDate(match.data, { month: "short" }).replace(".", "")}</span>
+          <strong>{displayDate(match.data, { day: "2-digit" }, language)}</strong>
+          <span>{displayDate(match.data, { month: "short" }, language).replace(".", "")}</span>
         </div>
         <div className="match-main">
           <div className="match-context">
-            <span>{match.jornada ? `Jornada ${match.jornada}` : "Partido finalizado"}</span>
+            <span>{match.jornada ? `${tr(language, "Jornada", "Jornada")} ${match.jornada}` : tr(language, "Partit finalitzat", "Partido finalizado")}</span>
             <span>{match.competicio || match.temporada}</span>
           </div>
           <div className="fixture">
@@ -357,14 +359,14 @@ function MatchCard({ match, expanded, acta, onToggle }) {
         </div>
         <button className="acta-button" type="button" aria-expanded={expanded} onClick={onToggle}>
           <span className="acta-icon" aria-hidden="true">{expanded ? "−" : "+"}</span>
-          {expanded ? "Cerrar acta" : "Ver acta"}
+          {expanded ? tr(language, "Tancar acta", "Cerrar acta") : tr(language, "Veure acta", "Ver acta")}
         </button>
       </div>
       {expanded && (
         <div className="acta-wrap" aria-live="polite">
-          {acta.loading && <p className="inline-status">Cargando el acta…</p>}
+          {acta.loading && <p className="inline-status">{tr(language, "Carregant l'acta…", "Cargando el acta…")}</p>}
           {acta.error && <p className="inline-status error-text">{acta.error}</p>}
-          {acta.data && <ActaDetails acta={acta.data} sanciones={acta.sanciones} previas={acta.previas} />}
+          {acta.data && <ActaDetails acta={acta.data} sanciones={acta.sanciones} previas={acta.previas} language={language} />}
         </div>
       )}
     </article>
@@ -372,6 +374,7 @@ function MatchCard({ match, expanded, acta, onToggle }) {
 }
 
 export default function Home() {
+  const language = useLanguage();
   const [teams, setTeams] = useState([]);
   const [teamId, setTeamId] = useState("");
   const [matches, setMatches] = useState([]);
@@ -389,7 +392,7 @@ export default function Home() {
     fetch("/api/equips", { signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "No se pudieron cargar los equipos.");
+        if (!response.ok) throw new Error("teams");
         const nextTeams = payload.equips || [];
         setTeams(nextTeams);
         setTeamId(nextTeams[0]?.id || "");
@@ -397,7 +400,7 @@ export default function Home() {
       })
       .catch((error) => {
         if (error.name !== "AbortError") {
-          setPageError(error.message || "No se pudieron cargar los equipos.");
+          setPageError("teams");
           setLoadingMatches(false);
         }
       })
@@ -411,11 +414,11 @@ export default function Home() {
     fetch(`/api/partits?equip=${encodeURIComponent(teamId)}`, { signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "No se pudieron cargar los partidos.");
+        if (!response.ok) throw new Error("matches");
         setMatches(payload.partits || []);
       })
       .catch((error) => {
-        if (error.name !== "AbortError") setPageError(error.message || "No se pudieron cargar los partidos.");
+        if (error.name !== "AbortError") setPageError("matches");
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoadingMatches(false);
@@ -425,10 +428,10 @@ export default function Home() {
 
   const seasons = [...new Set([CURRENT_SEASON.value, ...matches.map((match) => match.temporada)])]
     .sort((a, b) => b.localeCompare(a));
-  const normalizedQuery = deferredQuery.trim().toLocaleLowerCase("es");
+  const normalizedQuery = deferredQuery.trim().toLocaleLowerCase(language === "ca" ? "ca" : "es");
   const filteredMatches = matches.filter((match) => {
     const matchesSeason = season === "all" || match.temporada === season;
-    const matchesQuery = !normalizedQuery || `${match.local} ${match.visitant} ${match.competicio}`.toLocaleLowerCase("es").includes(normalizedQuery);
+    const matchesQuery = !normalizedQuery || `${match.local} ${match.visitant} ${match.competicio}`.toLocaleLowerCase(language === "ca" ? "ca" : "es").includes(normalizedQuery);
     return matchesSeason && matchesQuery;
   });
 
@@ -441,48 +444,58 @@ export default function Home() {
     try {
       const response = await fetch(`/api/acta?codacta=${encodeURIComponent(match.id)}`);
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "No se pudo cargar el acta.");
+      if (!response.ok) throw new Error(tr(language, "No s'ha pogut carregar l'acta.", "No se pudo cargar el acta."));
       setActaState({ id: match.id, loading: false, error: "", data: payload.acta, sanciones: payload.sanciones || [], previas: payload.sancionesPrevias || [] });
     } catch (error) {
-      setActaState({ id: match.id, loading: false, error: error.message || "No se pudo cargar el acta.", data: null });
+      setActaState({ id: match.id, loading: false, error: tr(language, "No s'ha pogut carregar l'acta.", "No se pudo cargar el acta."), data: null });
     }
   }
 
   const selectedTeam = teams.find((team) => team.id === teamId);
+  const pageErrorText = pageError === "teams"
+    ? tr(language, "No s'han pogut carregar els equips.", "No se pudieron cargar los equipos.")
+    : pageError === "matches"
+      ? tr(language, "No s'han pogut carregar els partits.", "No se pudieron cargar los partidos.")
+      : pageError;
 
   return (
     <main className="shell">
       <header className="masthead">
-        <Image className="club-logo" src={CLUB_CREST} alt="Escudo de la Fundació Terrassa FC 1906" width={54} height={54} unoptimized />
+        <Image className="club-logo" src={CLUB_CREST} alt={tr(language, "Escut de la Fundació Terrassa FC 1906", "Escudo de la Fundació Terrassa FC 1906")} width={54} height={54} unoptimized />
         <div className="brand">
           <p>Fundació Terrassa FC 1906</p>
-          <span>Fútbol sala · Archivo de partidos</span>
+          <span>{tr(language, "Futbol sala · Arxiu de partits", "Fútbol sala · Archivo de partidos")}</span>
         </div>
-        <div className="season-mark"><span>Temporada actual</span><strong>{CURRENT_SEASON.label}</strong></div>
+        <div className="login-language language-switch" role="group" aria-label={tr(language, "Idioma", "Idioma")}>
+          <button type="button" title="Català" aria-pressed={language === "ca"} onClick={() => setLanguage("ca")}>CA</button>
+          <button type="button" title="Español" aria-pressed={language === "es"} onClick={() => setLanguage("es")}>ES</button>
+        </div>
+        <div className="season-mark"><span>{tr(language, "Temporada actual", "Temporada actual")}</span><strong>{CURRENT_SEASON.label}</strong></div>
+        <a className="logout-button" href="/api/auth/logout">{tr(language, "Tancar sessió", "Cerrar sesión")}</a>
       </header>
 
       <section className="page-heading">
         <div>
-          <p className="eyebrow">{mode === "closed" ? "PARTIDOS FINALIZADOS" : "PARTIDOS PENDIENTES"} <span>·</span> FCF</p>
-          <h1>Actas de partido</h1>
-          <p className="heading-copy">{mode === "closed"
-            ? "Busca partidos finalizados y consulta el acta desde cada encuentro."
-            : "Elige uno de los próximos partidos y consulta qué jugadores no podrán jugarlo por sanción."}</p>
+          <div className="page-title-line">
+            <h1>{tr(language, "Actes de partit", "Actas de partido")}</h1>
+            <p className="heading-copy">{mode === "closed"
+              ? tr(language, "Busca partits finalitzats i consulta'n l'acta.", "Busca partidos finalizados y consulta el acta desde cada encuentro.")
+              : tr(language, "Tria un dels propers partits i consulta quins jugadors no podran jugar-lo per sanció.", "Elige uno de los próximos partidos y consulta qué jugadores no podrán jugarlo por sanción.")}</p>
+          </div>
         </div>
-        {mode === "closed" && <div className="archive-count"><strong>{matches.length}</strong><span>partidos<br />finalizados</span></div>}
       </section>
 
       <section className="mode-section" aria-labelledby="mode-heading">
-        <div className="section-head"><h3 id="mode-heading">Tipo de acta</h3></div>
+        <div className="section-head"><h3 id="mode-heading">{tr(language, "Tipus d'acta", "Tipo de acta")}</h3></div>
         <div className="seg" role="group" aria-labelledby="mode-heading">
-          <button type="button" aria-pressed={mode === "closed"} onClick={() => setMode("closed")}>Actas cerradas</button>
-          <button type="button" aria-pressed={mode === "pending"} onClick={() => setMode("pending")}>Actas pendientes</button>
+          <button type="button" aria-pressed={mode === "closed"} onClick={() => setMode("closed")}>{tr(language, "Actes tancades", "Actas cerradas")}</button>
+          <button type="button" aria-pressed={mode === "pending"} onClick={() => setMode("pending")}>{tr(language, "Actes pendents", "Actas pendientes")}</button>
         </div>
       </section>
 
-      <section className={`filters${mode === "pending" ? " is-pending" : ""}`} aria-label="Filtros de partidos">
+      <section className={`filters${mode === "pending" ? " is-pending" : ""}`} aria-label={tr(language, "Filtres de partits", "Filtros de partidos")}>
         <div className="filter-field team-filter">
-          <label htmlFor="team-select">Equipo</label>
+          <label htmlFor="team-select">{tr(language, "Equip", "Equipo")}</label>
           <select id="team-select" value={teamId} disabled={loadingTeams || !teams.length} onChange={(event) => {
             setLoadingMatches(Boolean(event.target.value));
             setPageError("");
@@ -491,25 +504,25 @@ export default function Home() {
             setActaState({ id: "", loading: false, error: "", data: null });
             setTeamId(event.target.value);
           }}>
-            {loadingTeams && <option value="">Cargando equipos…</option>}
-            {!loadingTeams && !teams.length && <option value="">No hay equipos disponibles</option>}
+            {loadingTeams && <option value="">{tr(language, "Carregant equips…", "Cargando equipos…")}</option>}
+            {!loadingTeams && !teams.length && <option value="">{tr(language, "No hi ha equips disponibles", "No hay equipos disponibles")}</option>}
             {teams.map((team) => <option key={team.id} value={team.id}>{team.etiqueta}</option>)}
           </select>
         </div>
         {mode === "closed" && (
           <>
             <div className="filter-field season-filter">
-              <label htmlFor="season-select">Temporada</label>
+              <label htmlFor="season-select">{tr(language, "Temporada", "Temporada")}</label>
               <select id="season-select" value={season} onChange={(event) => setSeason(event.target.value)} disabled={!seasons.length}>
-                <option value="all">Todas las temporadas</option>
+                <option value="all">{tr(language, "Totes les temporades", "Todas las temporadas")}</option>
                 {seasons.map((item) => <option key={item} value={item}>{item}</option>)}
               </select>
             </div>
             <div className="filter-field search-filter">
-              <label htmlFor="match-search">Rival o competición</label>
-              <input id="match-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar partido…" />
+              <label htmlFor="match-search">{tr(language, "Rival o competició", "Rival o competición")}</label>
+              <input id="match-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tr(language, "Cercar partit…", "Buscar partido…")} />
             </div>
-            <div className="filter-total"><strong>{filteredMatches.length}</strong><span>resultados</span></div>
+            <div className="filter-total"><strong>{filteredMatches.length}</strong><span>{tr(language, "resultats", "resultados")}</span></div>
           </>
         )}
       </section>
@@ -517,13 +530,13 @@ export default function Home() {
       {mode === "closed" && (
       <section className="results" aria-labelledby="results-heading">
         <div className="results-heading">
-          <h2 id="results-heading">Actas cerradas <span className="results-count">{filteredMatches.length}</span></h2>
-          <span>{selectedTeam ? `${selectedTeam.nom} · ${selectedTeam.categoria}` : "Historial de partidos"}</span>
+          <h2 id="results-heading">{tr(language, "Actes tancades", "Actas cerradas")} <span className="results-count">{filteredMatches.length}</span></h2>
+          <span>{selectedTeam ? `${selectedTeam.nom} · ${selectedTeam.categoria}` : tr(language, "Historial de partits", "Historial de partidos")}</span>
         </div>
-        {pageError && <p className="notice error-text" role="alert">{pageError}</p>}
-        {loadingMatches && <p className="notice" role="status">Cargando partidos finalizados…</p>}
+        {pageError && <p className="notice error-text" role="alert">{pageErrorText}</p>}
+        {loadingMatches && <p className="notice" role="status">{tr(language, "Carregant partits finalitzats…", "Cargando partidos finalizados…")}</p>}
         {!loadingTeams && !loadingMatches && !pageError && filteredMatches.length === 0 && (
-          <div className="empty-state"><span className="empty-mark">—</span><h3>No hay partidos para mostrar</h3><p>Prueba otra temporada o modifica la búsqueda.</p></div>
+          <div className="empty-state"><span className="empty-mark">—</span><h3>{tr(language, "No hi ha partits per mostrar", "No hay partidos para mostrar")}</h3><p>{tr(language, "Prova una altra temporada o modifica la cerca.", "Prueba otra temporada o modifica la búsqueda.")}</p></div>
         )}
         <div className="match-list">
           {filteredMatches.map((match) => (
@@ -533,15 +546,16 @@ export default function Home() {
               expanded={actaState.id === match.id}
               acta={actaState.id === match.id ? actaState : { loading: false, error: "", data: null }}
               onToggle={() => toggleActa(match)}
+              language={language}
             />
           ))}
         </div>
       </section>
       )}
 
-      {mode === "pending" && <PendingActas key={teamId} teamId={teamId} team={selectedTeam} />}
+      {mode === "pending" && <PendingActas key={teamId} teamId={teamId} team={selectedTeam} language={language} />}
 
-      <footer className="footer"><span>Fundació Terrassa FC 1906</span><span>Datos de la Federació Catalana de Futbol</span></footer>
+      <footer className="footer"><span>Fundació Terrassa FC 1906</span><span>{tr(language, "Dades de la Federació Catalana de Futbol", "Datos de la Federació Catalana de Futbol")}</span></footer>
     </main>
   );
 }
