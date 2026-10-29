@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 
 const CREST_URL = "https://files.fcf.cat/escudos/clubes/escudos/";
@@ -66,7 +66,34 @@ function SideRoster({ title, players }) {
   );
 }
 
-function ActaDetails({ acta, sanciones = [] }) {
+function SanctionsSection({ previas }) {
+  return (
+    <section className="acta-section">
+      <h3>Sanciones previas <span>{previas.length}</span></h3>
+      {previas.length ? (
+        <ul className="event-list">
+          {previas.map((sanction, index) => (
+            <li key={`${sanction.codparticipante}-${sanction.codacta}-${index}`}>
+              {sanction.escudo && <Image className="event-crest" src={crestUrl(sanction.escudo)} alt={`Escudo de ${(sanction.nombre_equipo || "").trim()}`} width={20} height={20} unoptimized />}
+              <span>
+                {sanction.participante_nombre || "Jugador"}
+                <small>{(sanction.nombre_equipo || "").trim()}</small>
+                <small>Sancionado en la jornada {sanction.jornada}{sanction.articulo_salida ? ` · Art. ${sanction.articulo_salida}` : ""}</small>
+              </span>
+              <div className="sanction-counts" aria-label={`${sanction.total} partidos de sanción, ${sanction.cumplidos} cumplidos, ${sanction.pendientes} restantes`}>
+                <span><b>{sanction.total}</b><small>Sanción</small></span>
+                <span><b>{sanction.cumplidos}</b><small>Cumplidos</small></span>
+                <span className="is-remaining"><b>{sanction.pendientes}</b><small>Restantes</small></span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="empty-note">Ningún jugador sancionado por partidos anteriores.</p>}
+    </section>
+  );
+}
+
+function ActaDetails({ acta, sanciones = [], previas = [] }) {
   const home = acta.equipo_local?.NOMBRE_EQUIPO || "Local";
   const away = acta.equipo_visitante?.NOMBRE_EQUIPO || "Visitante";
   const homeRoster = new Map(asList(acta.jugadores_equipo_local).map((player) => [String(player.id), player]));
@@ -130,16 +157,7 @@ function ActaDetails({ acta, sanciones = [] }) {
                 <li key={`${event.id_jugador}-${event.minuto}-${index}`}>
                   <strong>{event.minuto || "–"}&apos;</strong>
                   {event.escudo && <Image className="event-crest" src={crestUrl(event.escudo)} alt={`Escudo de ${event.team}`} width={20} height={20} unoptimized />}
-                  <span>
-                    {event.nombre_jugador || "Jugador"}
-                    <small>{event.team}</small>
-                    {(sanctionsByPlayer.get(String(event.id_jugador || "")) || []).map((sanction, sanctionIndex) => (
-                      <small className="sanction-label" key={`${sanction.articulo_salida}-${sanctionIndex}`}>
-                        {sanction.matches} {sanction.matches === 1 ? "partido" : "partidos"} de sanción
-                        {sanction.articulo_salida ? ` · Art. ${sanction.articulo_salida}` : ""}
-                      </small>
-                    ))}
-                  </span>
+                  <span>{event.nombre_jugador || "Jugador"}<small>{event.team}</small></span>
                   <b>{event.dorsal ? `#${event.dorsal}` : ""}</b>
                 </li>
               ))}
@@ -159,7 +177,16 @@ function ActaDetails({ acta, sanciones = [] }) {
                 <li key={`${event.id_jugador}-${event.minuto}-${index}`}>
                   <strong>{event.minuto || "–"}&apos;</strong>
                   {event.escudo && <Image className="event-crest" src={crestUrl(event.escudo)} alt={`Escudo de ${event.team}`} width={20} height={20} unoptimized />}
-                  <span>{event.nombre_jugador || "Jugador"}<small>{event.team}</small></span>
+                  <span>
+                    {event.nombre_jugador || "Jugador"}
+                    <small>{event.team}</small>
+                    {(sanctionsByPlayer.get(String(event.id_jugador || "")) || []).map((sanction, sanctionIndex) => (
+                      <small className="sanction-label" key={`${sanction.articulo_salida}-${sanctionIndex}`}>
+                        {sanction.matches} {sanction.matches === 1 ? "partido" : "partidos"} de sanción
+                        {sanction.articulo_salida ? ` · Art. ${sanction.articulo_salida}` : ""}
+                      </small>
+                    ))}
+                  </span>
                   {isSecondYellow(event) ? (
                     <span className="card-pair" role="img" aria-label="Expulsión por segunda tarjeta amarilla" title="Expulsión por segunda tarjeta amarilla">
                       <span className="card-shape" aria-hidden="true" />
@@ -175,18 +202,21 @@ function ActaDetails({ acta, sanciones = [] }) {
             </ul>
           ) : <p className="empty-note">Sin tarjetas registradas.</p>}
         </section>
-        <section className="acta-section">
-          <h3>Arbitraje <span>{officials.length}</span></h3>
-          {officials.length ? (
-            <ul className="official-list">
-              {officials.map((official, index) => (
-                <li key={official.CODARBITRO || index}>
-                  <span>{official.nombre_arbitro}</span><small>{official.rol || "Árbitro"}</small>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="empty-note">Sin arbitraje publicado.</p>}
-        </section>
+        <div className="acta-stack">
+          <SanctionsSection previas={previas} />
+          <section className="acta-section acta-section-compact">
+            <h3>Arbitraje <span>{officials.length}</span></h3>
+            {officials.length ? (
+              <ul className="official-list">
+                {officials.map((official, index) => (
+                  <li key={official.CODARBITRO || index}>
+                    <span>{official.nombre_arbitro}</span><small>{official.rol || "Árbitro"}</small>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="empty-note">Sin arbitraje publicado.</p>}
+          </section>
+        </div>
       </div>
       <div className="roster-grid">
         <SideRoster title={`Plantilla local · ${home}`} players={acta.jugadores_equipo_local} />
@@ -194,6 +224,109 @@ function ActaDetails({ acta, sanciones = [] }) {
       </div>
       <p className="acta-source">Acta y sanciones consultadas en la Federació Catalana de Futbol.</p>
     </div>
+  );
+}
+
+// Se monta con key={teamId}: al cambiar de equipo se reinicia y recarga sus próximos partidos.
+function PendingActas({ teamId, team }) {
+  const [matches, setMatches] = useState([]);
+  const [matchId, setMatchId] = useState("");
+  const [loadingMatches, setLoadingMatches] = useState(Boolean(teamId));
+  const [error, setError] = useState("");
+  const [detail, setDetail] = useState({ loading: false, error: "", previas: null });
+  const requestId = useRef(0);
+
+  useEffect(() => {
+    if (!teamId) return;
+    const controller = new AbortController();
+    fetch(`/api/pendents?equip=${encodeURIComponent(teamId)}`, { signal: controller.signal })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "No se pudieron cargar los próximos partidos.");
+        setMatches(payload.partits || []);
+      })
+      .catch((caught) => {
+        if (caught.name !== "AbortError") setError(caught.message || "No se pudieron cargar los próximos partidos.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingMatches(false);
+      });
+    return () => controller.abort();
+  }, [teamId]);
+
+  async function selectMatch(id) {
+    const current = ++requestId.current;
+    setMatchId(id);
+    setDetail({ loading: Boolean(id), error: "", previas: null });
+    if (!id) return;
+    try {
+      const response = await fetch(`/api/acta?codacta=${encodeURIComponent(id)}`);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "No se pudieron consultar las sanciones.");
+      if (current === requestId.current) setDetail({ loading: false, error: "", previas: payload.sancionesPrevias || [] });
+    } catch (caught) {
+      if (current === requestId.current) setDetail({ loading: false, error: caught.message || "No se pudieron consultar las sanciones.", previas: null });
+    }
+  }
+
+  const selectedMatch = matches.find((match) => match.id === matchId);
+
+  return (
+    <>
+      <div className="pending-filters">
+        <div className="filter-field">
+          <label htmlFor="pending-match">Próximo partido</label>
+          <select id="pending-match" value={matchId} disabled={!matches.length} onChange={(event) => selectMatch(event.target.value)}>
+            <option value="">{loadingMatches ? "Cargando partidos…" : matches.length ? `Elige uno de los ${matches.length} próximos partidos` : "No hay próximos partidos"}</option>
+            {matches.map((match) => (
+              <option key={match.id} value={match.id}>
+                {match.jornada ? `J${match.jornada}` : "Amistoso"} · {displayDate(match.data, { day: "2-digit", month: "short" }).replace(".", "")} {match.hora} · {match.local} – {match.visitant}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <section className="results" aria-labelledby="pending-heading">
+      <div className="results-heading">
+        <h2 id="pending-heading">Actas pendientes <span className="results-count">{matches.length}</span></h2>
+        <span>{team ? `${team.nom} · ${team.categoria}` : "Próximos partidos"}</span>
+      </div>
+      {error && <p className="notice error-text" role="alert">{error}</p>}
+      {selectedMatch && (
+        <article className="match-card pending-card">
+          <div className="match-row pending-row">
+            <div className="match-date">
+              <strong>{displayDate(selectedMatch.data, { day: "2-digit" })}</strong>
+              <span>{displayDate(selectedMatch.data, { month: "short" }).replace(".", "")}</span>
+            </div>
+            <div className="match-main">
+              <div className="match-context">
+                <span>{selectedMatch.jornada ? `Jornada ${selectedMatch.jornada}` : "Partido amistoso"}</span>
+                <span>{selectedMatch.hora} h</span>
+                <span>{selectedMatch.competicio}</span>
+              </div>
+              <div className="fixture">
+                <span className="team-name home-team">
+                  {selectedMatch.escudoLocal && <Image src={crestUrl(selectedMatch.escudoLocal)} alt="" width={27} height={27} unoptimized />}
+                  {selectedMatch.local}
+                </span>
+                <strong className="score">VS</strong>
+                <span className="team-name away-team">
+                  {selectedMatch.escudoVisitant && <Image src={crestUrl(selectedMatch.escudoVisitant)} alt="" width={27} height={27} unoptimized />}
+                  {selectedMatch.visitant}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="pending-detail" aria-live="polite">
+            {detail.loading && <p className="inline-status">Consultando sanciones…</p>}
+            {detail.error && <p className="inline-status error-text">{detail.error}</p>}
+            {detail.previas && <SanctionsSection previas={detail.previas} />}
+          </div>
+        </article>
+      )}
+      </section>
+    </>
   );
 }
 
@@ -231,7 +364,7 @@ function MatchCard({ match, expanded, acta, onToggle }) {
         <div className="acta-wrap" aria-live="polite">
           {acta.loading && <p className="inline-status">Cargando el acta…</p>}
           {acta.error && <p className="inline-status error-text">{acta.error}</p>}
-          {acta.data && <ActaDetails acta={acta.data} sanciones={acta.sanciones} />}
+          {acta.data && <ActaDetails acta={acta.data} sanciones={acta.sanciones} previas={acta.previas} />}
         </div>
       )}
     </article>
@@ -248,6 +381,7 @@ export default function Home() {
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [pageError, setPageError] = useState("");
   const [actaState, setActaState] = useState({ id: "", loading: false, error: "", data: null });
+  const [mode, setMode] = useState("closed");
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
@@ -308,7 +442,7 @@ export default function Home() {
       const response = await fetch(`/api/acta?codacta=${encodeURIComponent(match.id)}`);
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "No se pudo cargar el acta.");
-      setActaState({ id: match.id, loading: false, error: "", data: payload.acta, sanciones: payload.sanciones || [] });
+      setActaState({ id: match.id, loading: false, error: "", data: payload.acta, sanciones: payload.sanciones || [], previas: payload.sancionesPrevias || [] });
     } catch (error) {
       setActaState({ id: match.id, loading: false, error: error.message || "No se pudo cargar el acta.", data: null });
     }
@@ -329,14 +463,24 @@ export default function Home() {
 
       <section className="page-heading">
         <div>
-          <p className="eyebrow">PARTIDOS FINALIZADOS <span>·</span> FCF</p>
+          <p className="eyebrow">{mode === "closed" ? "PARTIDOS FINALIZADOS" : "PARTIDOS PENDIENTES"} <span>·</span> FCF</p>
           <h1>Actas de partido</h1>
-          <p className="heading-copy">Busca partidos finalizados y consulta el acta desde cada encuentro.</p>
+          <p className="heading-copy">{mode === "closed"
+            ? "Busca partidos finalizados y consulta el acta desde cada encuentro."
+            : "Elige uno de los próximos partidos y consulta qué jugadores no podrán jugarlo por sanción."}</p>
         </div>
-        <div className="archive-count"><strong>{matches.length}</strong><span>partidos<br />finalizados</span></div>
+        {mode === "closed" && <div className="archive-count"><strong>{matches.length}</strong><span>partidos<br />finalizados</span></div>}
       </section>
 
-      <section className="filters" aria-label="Filtros de partidos">
+      <section className="mode-section" aria-labelledby="mode-heading">
+        <div className="section-head"><h3 id="mode-heading">Tipo de acta</h3></div>
+        <div className="seg" role="group" aria-labelledby="mode-heading">
+          <button type="button" aria-pressed={mode === "closed"} onClick={() => setMode("closed")}>Actas cerradas</button>
+          <button type="button" aria-pressed={mode === "pending"} onClick={() => setMode("pending")}>Actas pendientes</button>
+        </div>
+      </section>
+
+      <section className={`filters${mode === "pending" ? " is-pending" : ""}`} aria-label="Filtros de partidos">
         <div className="filter-field team-filter">
           <label htmlFor="team-select">Equipo</label>
           <select id="team-select" value={teamId} disabled={loadingTeams || !teams.length} onChange={(event) => {
@@ -352,24 +496,29 @@ export default function Home() {
             {teams.map((team) => <option key={team.id} value={team.id}>{team.etiqueta}</option>)}
           </select>
         </div>
-        <div className="filter-field season-filter">
-          <label htmlFor="season-select">Temporada</label>
-          <select id="season-select" value={season} onChange={(event) => setSeason(event.target.value)} disabled={!seasons.length}>
-            <option value="all">Todas las temporadas</option>
-            {seasons.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
-        </div>
-        <div className="filter-field search-filter">
-          <label htmlFor="match-search">Rival o competición</label>
-          <input id="match-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar partido…" />
-        </div>
-        <div className="filter-total"><strong>{filteredMatches.length}</strong><span>resultados</span></div>
+        {mode === "closed" && (
+          <>
+            <div className="filter-field season-filter">
+              <label htmlFor="season-select">Temporada</label>
+              <select id="season-select" value={season} onChange={(event) => setSeason(event.target.value)} disabled={!seasons.length}>
+                <option value="all">Todas las temporadas</option>
+                {seasons.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </div>
+            <div className="filter-field search-filter">
+              <label htmlFor="match-search">Rival o competición</label>
+              <input id="match-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar partido…" />
+            </div>
+            <div className="filter-total"><strong>{filteredMatches.length}</strong><span>resultados</span></div>
+          </>
+        )}
       </section>
 
+      {mode === "closed" && (
       <section className="results" aria-labelledby="results-heading">
         <div className="results-heading">
-          <h2 id="results-heading">{selectedTeam?.nom || "Partidos"}</h2>
-          <span>{selectedTeam?.categoria || "Historial de partidos"}</span>
+          <h2 id="results-heading">Actas cerradas <span className="results-count">{filteredMatches.length}</span></h2>
+          <span>{selectedTeam ? `${selectedTeam.nom} · ${selectedTeam.categoria}` : "Historial de partidos"}</span>
         </div>
         {pageError && <p className="notice error-text" role="alert">{pageError}</p>}
         {loadingMatches && <p className="notice" role="status">Cargando partidos finalizados…</p>}
@@ -388,6 +537,9 @@ export default function Home() {
           ))}
         </div>
       </section>
+      )}
+
+      {mode === "pending" && <PendingActas key={teamId} teamId={teamId} team={selectedTeam} />}
 
       <footer className="footer"><span>Fundació Terrassa FC 1906</span><span>Datos de la Federació Catalana de Futbol</span></footer>
     </main>

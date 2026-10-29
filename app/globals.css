@@ -36,7 +36,14 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .archive-count { display: flex; align-items: center; gap: 9px; padding-left: 14px; border-left: 1px solid var(--line); }
 .archive-count strong { color: var(--red); font: 800 34px/.85 var(--display); }
 .archive-count span { color: var(--muted); font-size: 11px; line-height: 1.15; text-transform: uppercase; }
-.filters { display: grid; grid-template-columns: minmax(240px, 1.35fr) minmax(160px, .75fr) minmax(210px, 1fr) auto; gap: 13px; align-items: end; padding: 15px 0; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); }
+.mode-section { padding: 16px 0 15px; border-top: 2px solid var(--ink); }
+.section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.section-head h3 { margin: 0; font: 700 20px/1 var(--display); text-transform: uppercase; }
+.seg { display: inline-grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; background: var(--field); border: 1px solid var(--line); border-radius: 4px; }
+.seg button { min-width: 112px; padding: 8px 12px; color: var(--muted); background: transparent; border: 0; border-radius: 3px; font: 700 15px/1 var(--display); text-transform: uppercase; cursor: pointer; }
+.seg button[aria-pressed="true"] { color: #fff; background: var(--ink); }
+.filters { display: grid; grid-template-columns: minmax(240px, 1.35fr) minmax(160px, .75fr) minmax(210px, 1fr) auto; gap: 13px; align-items: end; padding: 15px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.filters.is-pending { grid-template-columns: minmax(0, 1fr); padding-bottom: 0; border-bottom: 0; }
 .filter-field { display: grid; gap: 5px; min-width: 0; }
 .filter-field label { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .filter-field select, .filter-field input { width: 100%; min-width: 0; height: 42px; padding: 8px 11px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 3px; }
@@ -49,6 +56,12 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .results-heading { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
 .results-heading h2 { margin: 0; font: 700 20px/1 var(--display); text-transform: uppercase; }
 .results-heading > span { color: var(--muted); font-size: 12px; }
+.results-count { margin-left: 6px; color: var(--red); font: 700 14px/1 var(--body); }
+.pending-filters { padding: 12px 0 15px; border-bottom: 1px solid var(--line); }
+.match-row.pending-row { grid-template-columns: auto minmax(0, 1fr); min-height: 0; }
+.pending-detail { padding: 0 15px 15px; }
+.pending-detail .acta-section { background: var(--field); }
+@media (max-width: 760px) { .pending-detail { padding: 0 10px 10px; } }
 .match-list { display: grid; gap: 8px; }
 .match-card { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; animation: appear 180ms ease-out both; }
 .match-card.is-expanded { border-color: #b7aaa4; }
@@ -81,6 +94,15 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .event-list li > span, .official-list li > span { min-width: 0; overflow-wrap: anywhere; }
 .event-list small, .official-list small { display: block; color: var(--muted); font-size: 10px; }
 .event-list small.sanction-label { margin-top: 3px; color: var(--red-dark); font-weight: 700; }
+.sanction-counts { display: flex; flex: none; gap: 8px; margin-left: auto; text-align: center; }
+.sanction-counts b { display: block; font: 700 15px/1 var(--display); }
+.sanction-counts small { display: block; margin-top: 2px; font-size: 8px; text-transform: uppercase; }
+.sanction-counts .is-remaining { color: var(--red-dark); }
+.acta-stack { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.acta-stack > .acta-section:first-child { flex: 1 1 auto; }
+.acta-section-compact { margin-top: auto; padding: 7px 11px; }
+.acta-section-compact h3 { margin-bottom: 4px; }
+.acta-section-compact .official-list li { padding: 3px 0; }
 .event-crest { flex: 0 0 20px; width: 20px; height: 20px; object-fit: contain; }
 .event-list li > b { margin-left: auto; font-size: 10px; }
 .card-counts { display: grid; grid-template-columns: 1fr 1px 1fr; align-items: center; justify-items: center; gap: 8px; margin: -2px 0 7px; text-align: center; }
